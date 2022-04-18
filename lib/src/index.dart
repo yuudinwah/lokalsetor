@@ -35,10 +35,9 @@ class ReferensiDokumen {
     _id = Penunjuk(jalan).id;
     if (_jalan.split('')[0] != '/') _jalan = '/' + _jalan;
     if (_jalan.split('')[_jalan.length - 1] != '/') _jalan = _jalan + '/';
-    if (Penunjuk(jalan).jalanInduk() != null)
-      _induk = ReferensiKoleksi(Penunjuk(jalan).jalanInduk()!);
-    else
-      _induk = null;
+    _induk = Penunjuk(jalan).jalanInduk() != null
+        ? ReferensiKoleksi(Penunjuk(jalan).jalanInduk()!)
+        : null;
   }
 
   Future<void> _buatJikaTidakAda() async {
@@ -203,8 +202,6 @@ class PotretDokumen {
   }
 
   Future<void> ambil() async {
-    // TODO
-
     if (_prefs == null) await _awalPref();
     String? params = await _prefs!.getString(_jalan);
 
