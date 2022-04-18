@@ -30,15 +30,6 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   @override
-  void initState() async {
-    PotretDokumen dok = await LokalSetor.instansi.dok(jalanDok).ambil();
-    if (dok.ada) {
-      print(dok.id);
-      Map<String, dynamic> data = dok.data();
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
