@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:encrypt/encrypt.dart';
 
 class LokalSetor {
   static LokalSetor get instansi => LokalSetor();
@@ -17,10 +18,6 @@ class ReferensiDokumen {
   String get jalan => _jalan;
   String get id => _id;
   ReferensiKoleksi? get induk => _induk;
-
-  SharedPreferences? _prefs;
-  Future<void> _awalPref() async =>
-      _prefs = await SharedPreferences.getInstance();
 
   ReferensiDokumen(String jalan) {
     assert(jalan.isNotEmpty, 'jalan harus tidak berisi string kosong');
@@ -41,12 +38,8 @@ class ReferensiDokumen {
   }
 
   Future<void> _buatJikaTidakAda() async {
-    if (induk != null) {
-      await induk!._buatJikaTidakAda();
-    }
-    if (_prefs == null) await _awalPref();
+    if (induk != null) await induk!._buatJikaTidakAda();
     PotretDokumen dok = await LokalSetor.instansi.dok(jalan).ambil();
-
     if (!dok.ada) {
       Map<String, dynamic> indukBaru = {
         "id": id,
@@ -55,14 +48,14 @@ class ReferensiDokumen {
         "path": jalan,
         "title": null
       };
-      await _prefs!.setString(jalan, jsonEncode(indukBaru));
-      String? indukMentah = await _prefs!.getString(induk!.jalan);
+      await _Prefs.setel(jalan, jsonEncode(indukBaru));
+      String? indukMentah = await _Prefs.ambil(induk!.jalan);
       if (indukMentah != null) {
         Map<String, dynamic> indukData = jsonDecode(indukMentah);
         List<String> datas = List<String>.from(indukData['data'] ?? []);
         datas.add(id);
         indukData['data'] = datas;
-        await _prefs!.setString(induk!.jalan, jsonEncode(indukData));
+        await _Prefs.setel(induk!.jalan, jsonEncode(indukData));
       }
     }
   }
@@ -77,10 +70,17 @@ class ReferensiDokumen {
     return dok;
   }
 
+  Future<void> ubah(Map<String, dynamic> data) async {
+    PotretDokumen dok = await ambil();
+    Map<String, dynamic> newData = {}
+      ..addAll(dok.data())
+      ..addAll(data);
+    await setel(newData);
+    return;
+  }
+
   Future<void> setel(Map<String, dynamic> data) async {
     if (induk != null) await induk!._buatJikaTidakAda();
-    if (_prefs == null) await _awalPref();
-
     List<Map<String, dynamic>> param = _ubahMapKeParam(data);
 
     Map<String, dynamic> indukBaru = {
@@ -90,16 +90,34 @@ class ReferensiDokumen {
       "path": jalan,
       "title": null
     };
-
-    await _prefs!.setString(jalan, jsonEncode(indukBaru));
-
-    String? indukMentah = await _prefs!.getString(induk!.jalan);
+    await _Prefs.setel(jalan, jsonEncode(indukBaru));
+    String? indukMentah = await _Prefs.ambil(induk!.jalan);
     if (indukMentah != null) {
       Map<String, dynamic> indukData = jsonDecode(indukMentah);
       List<String> datas = List<String>.from(indukData['data'] ?? []);
-      datas.add(id);
+      if (!datas.contains(id)) datas.add(id);
       indukData['data'] = datas;
-      await _prefs!.setString(induk!.jalan, jsonEncode(indukData));
+      await _Prefs.setel(induk!.jalan, jsonEncode(indukData));
+    }
+  }
+
+  Future<void> hapus() async {
+    PotretDokumen dok = await PotretDokumen._awal(_jalan);
+    await dok.ambil();
+    assert(dok.ada, 'dokumen tidak ditemukan');
+    await _Prefs.hapus(jalan);
+    if (induk != null) {
+      String? _indukMentah = await _Prefs.ambil(induk!._jalan);
+      if (_indukMentah != null) {
+        _DokumenMentah indukMentah =
+            _DokumenMentah.fromMap(jsonDecode(_indukMentah));
+        if ((indukMentah.data ?? []).length > 1) {
+          induk!._hapus();
+        } else {
+          indukMentah.data?.remove(id);
+          await induk!._ubah(indukMentah);
+        }
+      }
     }
   }
 }
@@ -108,10 +126,6 @@ class ReferensiKoleksi {
   String get jalan => _jalan;
   String get id => _id;
   ReferensiDokumen? get induk => _induk;
-
-  SharedPreferences? _prefs;
-  Future<void> _awalPref() async =>
-      _prefs = await SharedPreferences.getInstance();
 
   ReferensiKoleksi(String jalan) {
     assert(jalan.isNotEmpty, 'jalan harus tidak berisi string kosong');
@@ -134,8 +148,7 @@ class ReferensiKoleksi {
 
   Future<void> _buatJikaTidakAda() async {
     if (induk != null) await induk!._buatJikaTidakAda();
-    if (_prefs == null) await _awalPref();
-    String? dok = await _prefs!.getString(jalan);
+    String? dok = await _Prefs.ambil(jalan);
     if (dok == null) {
       Map<String, dynamic> indukBaru = {
         "id": id,
@@ -144,15 +157,15 @@ class ReferensiKoleksi {
         "path": jalan,
         "title": null
       };
-      await _prefs!.setString(jalan, jsonEncode(indukBaru));
+      await _Prefs.setel(jalan, jsonEncode(indukBaru));
       String? indukMentah =
-          await _prefs!.getString(induk != null ? induk!.jalan : '/');
+          await _Prefs.ambil(induk != null ? induk!.jalan : '/');
       if (indukMentah != null) {
         Map<String, dynamic> indukData = jsonDecode(indukMentah);
         List<String> datas = List<String>.from(indukData['data'] ?? []);
         datas.add(id);
         indukData['data'] = datas;
-        await _prefs!.setString(
+        await _Prefs.setel(
             induk != null ? induk!.jalan : '/', jsonEncode(indukData));
       } else {
         Map<String, dynamic> indukBaru = {
@@ -162,9 +175,21 @@ class ReferensiKoleksi {
           "path": jalan,
           "title": null
         };
-        await _prefs!.setString('/', jsonEncode(indukBaru));
+        await _Prefs.setel('/', jsonEncode(indukBaru));
       }
     }
+  }
+
+  Future<void> _ubah(dataInduk) async {
+    String? dataMentah = await _Prefs.ambil(jalan);
+    assert(dataMentah != null, 'koleksi tidak ditemukan');
+    await _Prefs.setel(jalan, jsonEncode(dataInduk));
+  }
+
+  Future<void> _hapus() async {
+    String? dataMentah = await _Prefs.ambil(jalan);
+    assert(dataMentah != null, 'koleksi tidak ditemukan');
+    await _Prefs.hapus(jalan);
   }
 
   late String _jalan;
@@ -173,6 +198,12 @@ class ReferensiKoleksi {
 
   ReferensiDokumen dok(String jalan) {
     return ReferensiDokumen(_jalan + jalan);
+  }
+
+  Future<ReferensiDokumen> tambah(Map<String, dynamic> data) async {
+    ReferensiDokumen ref = LokalSetor.instansi.dok(_jalan + id);
+    await ref.setel(data);
+    return ref;
   }
 
   Future<PotretKueri> ambil() async {
@@ -188,10 +219,6 @@ class PotretDokumen {
   bool get ada => _params != null;
   ReferensiDokumen get referensi => _referensi;
 
-  SharedPreferences? _prefs;
-  Future<void> _awalPref() async =>
-      _prefs = await SharedPreferences.getInstance();
-
   static Future<PotretDokumen> _awal(String jalan) async {
     PotretDokumen dok = PotretDokumen();
     dok._referensi = ReferensiDokumen(jalan);
@@ -202,8 +229,7 @@ class PotretDokumen {
   }
 
   Future<void> ambil() async {
-    if (_prefs == null) await _awalPref();
-    String? params = await _prefs!.getString(_jalan);
+    String? params = await _Prefs.ambil(_jalan);
 
     if (params != null) {
       try {
@@ -220,7 +246,6 @@ class PotretDokumen {
 
   Future<void> setel(Map<String, dynamic> data) async {
     if (referensi.induk != null) await referensi.induk!._buatJikaTidakAda();
-    if (_prefs == null) await _awalPref();
     List<Map<String, dynamic>> param = _ubahMapKeParam(data);
     Map<String, dynamic> indukBaru = {
       "id": id,
@@ -229,14 +254,14 @@ class PotretDokumen {
       "path": jalan,
       "title": null
     };
-    await _prefs!.setString(jalan, jsonEncode(indukBaru));
-    String? indukMentah = await _prefs!.getString(referensi.induk!.jalan);
+    await _Prefs.setel(jalan, jsonEncode(indukBaru));
+    String? indukMentah = await _Prefs.ambil(referensi.induk!.jalan);
     if (indukMentah != null) {
       Map<String, dynamic> indukData = jsonDecode(indukMentah);
       List<String> datas = List<String>.from(indukData['data'] ?? []);
       if (!datas.contains(id)) datas.add(id);
       indukData['data'] = datas;
-      await _prefs!.setString(referensi.induk!.jalan, jsonEncode(indukData));
+      await _Prefs.setel(referensi.induk!.jalan, jsonEncode(indukData));
     }
   }
 
@@ -256,15 +281,9 @@ class PotretKueri {
   List<PotretDokumen>? get doks => _doks;
   int get size => (_doks ?? []).length;
 
-  SharedPreferences? _prefs;
-  Future<void> _awalPref() async =>
-      _prefs = await SharedPreferences.getInstance();
-
   static Future<PotretKueri> _ambil(String jalan) async {
     PotretKueri kueri = PotretKueri();
-    if (kueri._prefs == null) await kueri._awalPref();
-    String? params = await kueri._prefs!.getString(jalan);
-
+    String? params = await _Prefs.ambil(jalan);
     if (params != null) {
       try {
         Map<String, dynamic> data = jsonDecode(params);
@@ -495,5 +514,33 @@ class _DokumenMentah {
       "doc": this.doc,
       "index": this.index,
     };
+  }
+}
+
+class _Prefs {
+  static final key = Key.fromUtf8('my 32 length key................');
+  static final iv = IV.fromLength(16);
+  static final encrypter = Encrypter(AES(key));
+
+  static Future<String?> ambil(_key) async {
+    SharedPreferences? _prefs = await SharedPreferences.getInstance();
+    String? data =
+        await _prefs.getString(encrypter.encrypt(_key, iv: iv).base64);
+    return data != null ? encrypter.decrypt64(data, iv: iv) : null;
+  }
+
+  static Future<void> setel(String _key, String value) async {
+    // final decrypted = encrypter.decrypt64(encrypted.base64, iv: iv);
+
+    SharedPreferences? _prefs = await SharedPreferences.getInstance();
+    await _prefs.setString(encrypter.encrypt(_key, iv: iv).base64,
+        encrypter.encrypt(value, iv: iv).base64);
+  }
+
+  static Future<void> hapus(String _key) async {
+    // final decrypted = encrypter.decrypt64(encrypted.base64, iv: iv);
+
+    SharedPreferences? _prefs = await SharedPreferences.getInstance();
+    await _prefs.remove(encrypter.encrypt(_key, iv: iv).base64);
   }
 }
