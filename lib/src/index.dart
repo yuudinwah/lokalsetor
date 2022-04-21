@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:encrypt/encrypt.dart';
 
@@ -102,23 +103,10 @@ class ReferensiDokumen {
   }
 
   Future<void> hapus() async {
-    PotretDokumen dok = await PotretDokumen._awal(_jalan);
-    await dok.ambil();
+    PotretDokumen dok = await ambil();
     assert(dok.ada, 'dokumen tidak ditemukan');
     await _Prefs.hapus(jalan);
-    if (induk != null) {
-      String? _indukMentah = await _Prefs.ambil(induk!._jalan);
-      if (_indukMentah != null) {
-        _DokumenMentah indukMentah =
-            _DokumenMentah.fromMap(jsonDecode(_indukMentah));
-        if ((indukMentah.data ?? []).length > 1) {
-          induk!._hapus();
-        } else {
-          indukMentah.data?.remove(id);
-          await induk!._ubah(indukMentah);
-        }
-      }
-    }
+    return;
   }
 }
 
@@ -180,12 +168,14 @@ class ReferensiKoleksi {
     }
   }
 
+  // ignore: unused_element
   Future<void> _ubah(dataInduk) async {
     String? dataMentah = await _Prefs.ambil(jalan);
     assert(dataMentah != null, 'koleksi tidak ditemukan');
     await _Prefs.setel(jalan, jsonEncode(dataInduk));
   }
 
+  // ignore: unused_element
   Future<void> _hapus() async {
     String? dataMentah = await _Prefs.ambil(jalan);
     assert(dataMentah != null, 'koleksi tidak ditemukan');
@@ -200,8 +190,23 @@ class ReferensiKoleksi {
     return ReferensiDokumen(_jalan + jalan);
   }
 
+  String membuatJalan() {
+    const _chars =
+        'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890';
+    Random _rnd = Random();
+
+    return String.fromCharCodes(
+      Iterable.generate(
+        28,
+        (_) => _chars.codeUnitAt(
+          _rnd.nextInt(_chars.length),
+        ),
+      ),
+    );
+  }
+
   Future<ReferensiDokumen> tambah(Map<String, dynamic> data) async {
-    ReferensiDokumen ref = LokalSetor.instansi.dok(_jalan + id);
+    ReferensiDokumen ref = ReferensiDokumen(_jalan + (membuatJalan()));
     await ref.setel(data);
     return ref;
   }

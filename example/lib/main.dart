@@ -1,3 +1,4 @@
+import 'package:example/crud/membaca.dart';
 import 'package:flutter/material.dart';
 import 'package:lokalsetor/lokalsetor.dart';
 
@@ -50,6 +51,18 @@ class _MyHomePageState extends State<MyHomePage> {
                     '${snapshot.data!.data()['counter']}',
                     style: Theme.of(context).textTheme.headline4,
                   ),
+                  const SizedBox(
+                    height: 10,
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const Membaca(),
+                      ),
+                    ),
+                    child: const Text('Contoh CRUD'),
+                  ),
                   const Expanded(child: SizedBox()),
                   Container(
                     alignment: Alignment.centerRight,
@@ -60,7 +73,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       tooltip: 'Increment',
                       child: const Icon(Icons.add),
                     ),
-                  )
+                  ),
                 ],
               );
             } else {
